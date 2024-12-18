@@ -16,4 +16,10 @@
     "ruff.organizeImports": true,
     "ruff.fixAll": true,
     "editor.formatOnSave": true,
+    "github.copilot.enable": {
+        "*": true,
+        "plaintext": true,
+        "markdown": true,
+        "scminput": false
+    }
 }

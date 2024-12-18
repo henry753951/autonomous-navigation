@@ -4,16 +4,29 @@ from __future__ import annotations
 from typing import TypeVar
 
 from src.modules.base_module import BaseModule
+from src.utils.logger import setup_logger
+from src.view_controller import ViewController
 
 T = TypeVar("T", bound=BaseModule)
 
 
 class ModuleController:
-    def __init__(self) -> None:
+    def __init__(self, view_controller: ViewController = None) -> None:
         self.components: dict[str, BaseModule] = {}
+        self.logger = setup_logger("ModuleController", None)
+        self.view_controller = view_controller
 
     def register_component(self, component: BaseModule) -> None:
         key = f"{component.__class__.__name__}#{component.module_info.key}"
+        if key in self.components:
+            error_message = (
+                f'Component "{component.__class__.__name__}" with key '
+                f'"{component.module_info.key}" is already registered.'
+                "\nKey list:\n" + "\n".join(f"- {key}" for key in self.components)
+            )
+            raise ValueError(error_message)
+
+        component.set_controller(self)
         self.components[key] = component
 
     def get_component(
@@ -28,11 +41,13 @@ class ModuleController:
 
     def initialize_modules(self) -> None:
         for component in self.components.values():
-            component.set_controller(self)
-            component.__init_module__()
-        for component in self.components.values():
-            component.__ready__()
+            component.logger.info("🐌 Mounting module...")
             component.__mount__()
+            component.logger.info("😊 Module is mounted.")
+        for component in self.components.values():
+            component.__sysready__()
+        component.register_view_updates()
+        self.logger.info("🔥 All modules are ready.")
 
     def update(self) -> None:
         for component in self.components.values():

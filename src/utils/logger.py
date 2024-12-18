@@ -31,7 +31,7 @@ class ColorFormatter(logging.Formatter):
 
         allowed_keys = {"pathname", "lineno", "module"}
         extra_info = {k: v for k, v in vars(record).items() if k in allowed_keys}
-        if extra_info and record.levelno != logging.INFO:
+        if extra_info and (record.levelno in (logging.ERROR, logging.warning)):
             extra_str = "\n"
             extra_str += f"{record.msg}\n"
             extra_str += f"Module: {record.module}\n"
@@ -39,16 +39,22 @@ class ColorFormatter(logging.Formatter):
             extra_str += f"on {record.pathname}#{record.lineno}\n"
             extra_str += f"Thread: {record.threadName} ({record.thread})\n"
             return f"{base_message}{extra_str}"
+        if extra_info and record.levelno == logging.DEBUG:
+            extra_str = "\n"
+            extra_str += f"\t\t  | on {record.pathname}#{record.lineno}"
+            return f"{base_message}{extra_str}"
         return base_message
 
 
 def setup_logger(name: str, key: str | None) -> logging.Logger:
     logger = logging.getLogger(f"{name}#{key}")
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     handler = logging.StreamHandler()
+    url_mask = "\033]8;{};{}\033\\{}\033]8;;\033\\"
+    module_name = url_mask.format("", "%(pathname)s", name)
     format_str = (
         f"%(levelname)s|{TIME_COLOR}%(asctime)s{Style.RESET_ALL}| "
-        f"[{MODULE_COLOR}{name}{f'#{key}' if key else ''}{Style.RESET_ALL}] "
+        f"[{MODULE_COLOR}{module_name}{f'#{key}' if key else ''}{Style.RESET_ALL}] "
         f"%(message)s"
     )
 

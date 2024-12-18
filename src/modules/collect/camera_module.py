@@ -2,8 +2,10 @@
 import time
 
 import cv2
+import rerun as rr
 
 from src.modules.base_module import BaseModule
+from src.view_controller import Providers, on_view_update
 
 
 class CameraModule(BaseModule):
@@ -15,21 +17,18 @@ class CameraModule(BaseModule):
         self._last_time: float = 0.0
         self._fps: float = 0.0
 
-    def __init_module__(self) -> None:
+    def __mount__(self) -> None:
         self._capture = cv2.VideoCapture(self._video_path)
         self.frame = None
         if not self._capture.isOpened():
             self.logger.error(f"Failed to open video: {self._video_path}")
             self._capture = None
         else:
-            self.logger.info(f"Video opened: {self._video_path}")
+            self.logger.debug(f"Video opened: {self._video_path}")
         self._last_time = time.time()
 
-    def __ready__(self) -> None:
+    def __sysready__(self) -> None:
         pass
-
-    def __mount__(self) -> None:
-        self.logger.info("CameraModule is mounted.")
 
     def __unmount__(self) -> None:
         if self._capture:
@@ -69,6 +68,9 @@ class CameraModule(BaseModule):
             2,  # Thickness
         )
 
-        # Display the frame
-        cv2.imshow("CameraModule", self.frame)
-        cv2.waitKey(1)
+    @on_view_update(interval=1 / 30)
+    def display_frame(self, providers: Providers) -> None:
+        if self.frame is not None:
+            providers.rerun.log("Camera", rr.Image(self.frame))
+        else:
+            self.logger.warning("No frame to display.")

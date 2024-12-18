@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Self, TypeVar
 
 from src.utils.logger import setup_logger
 
@@ -23,19 +23,25 @@ class BaseModule(ABC):
     is_active = True
 
     @abstractmethod
-    def __init__(self, key: str = "default") -> None:
+    def __init__(self) -> None:
         """
         Called when the class is created.
 
         No Controller available at this point.
-        Remember to call the super().__init__() if you override this method.
         """
-        self.module_info = ModuleInfo(self.__class__.__name__, key)
-        self.logger = setup_logger(self.module_info.name, self.module_info.key)
+
+    def __new__(cls) -> Self:
+        instance = super().__new__(cls)
+        instance.module_info = ModuleInfo(instance.__class__.__name__, key="default")
+        instance.logger = setup_logger(
+            instance.module_info.name,
+            instance.module_info.key,
+        )
+        return instance
 
     # Lifecycle hooks
     @abstractmethod
-    def __init_module__(self) -> None:
+    def __mount__(self) -> None:
         """
         Called when the module is initialized.
 
@@ -44,15 +50,9 @@ class BaseModule(ABC):
         """
 
     @abstractmethod
-    def __ready__(self) -> None:
+    def __sysready__(self) -> None:
         """
         Called after all modules are initialized. (Only called once)
-        """
-
-    @abstractmethod
-    def __mount__(self) -> None:
-        """
-        Called after the module is mounted.
         """
 
     @abstractmethod
@@ -75,12 +75,38 @@ class BaseModule(ABC):
         """
 
     # Utility methods
-    def set_controller(self, controller: ModuleController) -> None:
+    def set_controller(self, controller: ModuleController) -> Self:
         self.controller = controller
+        return self
+
+    def set_key(self, key: str) -> BaseModule:
+        """
+        Set the key of the module.
+        """
+        self.module_info.key = key
+        del self.logger
+        self.logger = setup_logger(
+            self.module_info.name,
+            self.module_info.key,
+        )
+        return self
 
     def get_component(
         self,
         component_cls: type[T],
-        key: str | None = "default",
+        key: str = "default",
     ) -> T | None:
         return self.controller.get_component(component_cls, key)
+
+    def register_view_updates(self) -> None:
+        """自動將標記的函數註冊到 ViewController"""
+        if not self.controller or not self.controller.view_controller:
+            self.logger.warning("Controller or view controller is not available.")
+
+        view_controller = self.controller.view_controller
+
+        for attr_name in dir(self):
+            attr = getattr(self, attr_name)
+            if callable(attr) and hasattr(attr, "_view_update"):
+                interval = attr._view_update["interval"]  # noqa: SLF001
+                view_controller.register_task(attr, interval)
