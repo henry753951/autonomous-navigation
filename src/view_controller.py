@@ -51,11 +51,7 @@ class ViewController:
     def _execute_task(self, task: Callable, **available_args) -> None:
         """Execute a task with available arguments."""
         sig = inspect.signature(task)
-        kwargs = {
-            name: available_args[name]
-            for name, param in sig.parameters.items()
-            if name in available_args
-        }
+        kwargs = {name: available_args[name] for name, param in sig.parameters.items() if name in available_args}
         task(**kwargs)
 
     def register_task(self, task: Callable, interval: float) -> None:

@@ -1,11 +1,13 @@
 # src/module_controller.py
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from src.modules.base_module import BaseModule
 from src.utils.logger import setup_logger
-from src.view_controller import ViewController
+
+if TYPE_CHECKING:
+    from src.view_controller import ViewController
 
 T = TypeVar("T", bound=BaseModule)
 
@@ -46,15 +48,21 @@ class ModuleController:
             component.logger.info("😊 Module is mounted.")
         for component in self.components.values():
             component.__sysready__()
-        component.register_view_updates()
+            component.register_view_updates()
         self.logger.info("🔥 All modules are ready.")
 
     def update(self) -> None:
         for component in self.components.values():
-            if component.is_active:
-                component.update()
+            try:
+                if component.is_active:
+                    component.update()
+            except Exception as e:  # noqa: PERF203
+                component.logger.exception(f"Error in {component.__class__.__name__}: {e}")
 
     def rare_update(self) -> None:
         for component in self.components.values():
-            if component.is_active:
-                component.rare_update()
+            try:
+                if component.is_active:
+                    component.rare_update()
+            except Exception as e:  # noqa: PERF203
+                component.logger.exception(f"Error in {component.__class__.__name__}: {e}")

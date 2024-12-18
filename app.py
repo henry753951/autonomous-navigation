@@ -4,6 +4,7 @@ import time
 from src.module_controller import ModuleController
 from src.modules.base_module import BaseModule
 from src.modules.collect.camera_module import CameraModule
+from src.modules.process.depth_module import DepthModule
 from src.utils.logger import setup_logger
 from src.view_controller import ViewController
 
@@ -20,7 +21,6 @@ class App:
             "update": 120,
             "rare_update": 30,
         }
-
         self.modules = modules
         self.initialize_modules()
 
@@ -34,7 +34,6 @@ class App:
 
     def rare_update_loop(self) -> None:
         """執行 rare_update 的迴圈"""
-
         while self.running.is_set():
             start_time: float = time.time()
             self.controller.rare_update()
@@ -54,7 +53,10 @@ class App:
         self.controller.initialize_modules()
 
     def run(self) -> None:
-        """啟動應用程式"""
+        """啟動應用程式.
+
+        dsadsa
+        """
         # 啟動 view controller
         self.view_controller.start()
         # 啟動執行緒
@@ -87,9 +89,8 @@ if __name__ == "__main__":
             # 模組的初始化參數可以在這裡設定
             # set_key() 可設定模組的 key，沒呼叫 set_key 的話，預設為 Default
             # (當有同名模組時可以用 key 區分)
-            CameraModule().set_key(
-                "camera1",
-            ),
+            CameraModule(),
+            DepthModule(),
         ],
     )
     app.run()

@@ -1,8 +1,9 @@
 # src/base_module.py
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Self, TypeVar
+from typing import TYPE_CHECKING, TypeVar
+
+from typing_extensions import Self
 
 from src.utils.logger import setup_logger
 
@@ -18,14 +19,12 @@ class ModuleInfo:
         self.key = key
 
 
-class BaseModule(ABC):
+class BaseModule:
     controller: ModuleController | None = None
     is_active = True
 
-    @abstractmethod
     def __init__(self) -> None:
-        """
-        Called when the class is created.
+        """Called when the class is created.
 
         No Controller available at this point.
         """
@@ -40,49 +39,33 @@ class BaseModule(ABC):
         return instance
 
     # Lifecycle hooks
-    @abstractmethod
     def __mount__(self) -> None:
-        """
-        Called when the module is initialized.
+        """Called when the module is initialized.
 
         This method is not called during the class creation.
         If you want to, you can use the __init__ instead.
         """
 
-    @abstractmethod
     def __sysready__(self) -> None:
-        """
-        Called after all modules are initialized. (Only called once)
-        """
+        """Called after all modules are initialized. (Only called once)"""
 
-    @abstractmethod
     def __unmount__(self) -> None:
-        """
-        Called before the module is unmounted.
-        """
+        """Called before the module is unmounted."""
 
     # Update methods
-    @abstractmethod
     def update(self) -> None:
-        """
-        Called every frame.
-        """
+        """Called every frame."""
 
-    @abstractmethod
     def rare_update(self) -> None:
-        """
-        Called every fixed interval.
-        """
+        """Called every fixed interval."""
 
     # Utility methods
-    def set_controller(self, controller: ModuleController) -> Self:
+    def set_controller(self, controller: ModuleController) -> BaseModule:
         self.controller = controller
         return self
 
     def set_key(self, key: str) -> BaseModule:
-        """
-        Set the key of the module.
-        """
+        """Set the key of the module."""
         self.module_info.key = key
         del self.logger
         self.logger = setup_logger(

@@ -68,13 +68,13 @@ class CameraModule(BaseModule):
             2,  # Thickness
         )
 
-    @on_view_update(interval=1 / 30)
+    @on_view_update(interval=1 / 10)
     def display_frame(self, providers: Providers) -> None:
         if self.frame is not None:
             providers.rerun.log("Camera", rr.Image(self.frame))
         else:
             self.logger.warning("No frame to display.")
 
-    @on_view_update(interval=1 / 30)
+    @on_view_update(interval=1 / 5)
     def display_fps(self, providers: Providers) -> None:
-        providers.rerun.log("Camera_FPS", rr.log("FPS", rr.TextLog(self._fps)))
+        providers.rerun.log("Camera_FPS", rr.TextLog(self._fps))

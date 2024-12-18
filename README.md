@@ -1,3 +1,11 @@
+# Setup
+```bash
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124  
+uv pip install xformers --index-url https://download.pytorch.org/whl/cu124
+uv pip install .
+
+uv run app.py
+```
 # Create Module
 
 
