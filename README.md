@@ -1,5 +1,7 @@
 # Setup
+VSCode : ruff 載一下
 ```bash
+# cuda 自己改。或刪除qq
 uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124  
 uv pip install xformers --index-url https://download.pytorch.org/whl/cu124
 uv pip install .
