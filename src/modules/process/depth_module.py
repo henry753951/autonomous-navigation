@@ -1,5 +1,6 @@
 # src/modules/process/depth_module.py
 
+import cv2
 import rerun as rr
 import torch
 
@@ -23,7 +24,6 @@ class DepthModule(BaseModule):
     def update(self) -> None:
         if self.camera_module.frame is None:
             return
-
         rgb_origin = self.camera_module.frame[:, :, ::-1]
         intrinsic = [707.0493, 707.0493, 604.0814, 180.5066]
         input_size = (616, 1064)  # for vit model
@@ -42,13 +42,18 @@ class DepthModule(BaseModule):
     @on_view_update(interval=1 / 10)
     def display_frame(self, providers: Providers) -> None:
         if self.pred_depth is not None:
-            depth_image = self.pred_depth
-            providers.rerun.log(f"camera/depth/image{depth_image.shape}", rr.DepthImage(depth_image))
+            depth_image = self.pred_depth.squeeze().cpu().numpy()
+            h, w = self.camera_module.frame.shape[:2]
+            # Resize the depth image to the original size
+            depth_image = cv2.resize(depth_image, (w, h), interpolation=cv2.INTER_LINEAR)
+
             providers.rerun.log(
-                "camera/depth/intrinsic",
+                "camera/image",
                 rr.Pinhole(
                     width=depth_image.shape[1],
                     height=depth_image.shape[0],
-                    focal_length=200,
+                    focal_length=0.7 * depth_image.shape[1],
+                    image_plane_distance=40.0,
                 ),
             )
+            providers.rerun.log("camera/image/depth", rr.DepthImage(depth_image))
