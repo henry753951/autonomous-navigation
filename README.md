@@ -1,4 +1,5 @@
 # Setup
+Pytho 3.10.15
 VSCode : ruff 載一下
 ```bash
 # cuda 自己改。或刪除qq
