@@ -18,7 +18,7 @@ class App:
         self.logger = setup_logger("Main", None)
         self.max_tick = {
             "update": 120,
-            "fixed_update": 30,
+            "rare_update": 30,
         }
 
         self.modules = modules
@@ -32,14 +32,14 @@ class App:
             elapsed: float = time.time() - start_time
             time.sleep(max(0, 1 / self.max_tick["update"] - elapsed))
 
-    def fixed_update_loop(self) -> None:
-        """執行 fixed_update 的迴圈"""
+    def rare_update_loop(self) -> None:
+        """執行 rare_update 的迴圈"""
 
         while self.running.is_set():
             start_time: float = time.time()
-            self.controller.fixed_update()
+            self.controller.rare_update()
             elapsed: float = time.time() - start_time
-            time.sleep(max(0, 1 / self.max_tick["fixed_update"] - elapsed))
+            time.sleep(max(0, 1 / self.max_tick["rare_update"] - elapsed))
 
     def stop(self) -> None:
         """停止執行"""
@@ -63,12 +63,12 @@ class App:
             target=self.update_loop,
             daemon=False,
         )
-        fixed_update_thread: threading.Thread = threading.Thread(
-            target=self.fixed_update_loop,
+        rare_update_thread: threading.Thread = threading.Thread(
+            target=self.rare_update_loop,
             daemon=False,
         )
         update_thread.start()
-        fixed_update_thread.start()
+        rare_update_thread.start()
 
         try:
             while True:
@@ -77,7 +77,7 @@ class App:
             self.logger.warning("Detected keyboard interrupt. Stopping...")
             self.stop()
             update_thread.join()
-            fixed_update_thread.join()
+            rare_update_thread.join()
             self.logger.info("App stopped.")
 
 

@@ -39,7 +39,7 @@ class CameraModule(BaseModule):
     def update(self) -> None:
         pass
 
-    def fixed_update(self) -> None:
+    def rare_update(self) -> None:
         if not self._capture:
             self.logger.error("Video capture is not initialized.")
             return
@@ -74,3 +74,7 @@ class CameraModule(BaseModule):
             providers.rerun.log("Camera", rr.Image(self.frame))
         else:
             self.logger.warning("No frame to display.")
+
+    @on_view_update(interval=1 / 30)
+    def display_fps(self, providers: Providers) -> None:
+        providers.rerun.log("Camera_FPS", rr.log("FPS", rr.TextLog(self._fps)))

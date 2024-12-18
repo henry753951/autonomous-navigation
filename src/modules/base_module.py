@@ -69,7 +69,7 @@ class BaseModule(ABC):
         """
 
     @abstractmethod
-    def fixed_update(self) -> None:
+    def rare_update(self) -> None:
         """
         Called every fixed interval.
         """

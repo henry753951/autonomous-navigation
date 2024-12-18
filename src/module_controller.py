@@ -54,7 +54,7 @@ class ModuleController:
             if component.is_active:
                 component.update()
 
-    def fixed_update(self) -> None:
+    def rare_update(self) -> None:
         for component in self.components.values():
             if component.is_active:
-                component.fixed_update()
+                component.rare_update()
