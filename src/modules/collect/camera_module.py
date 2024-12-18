@@ -71,7 +71,7 @@ class CameraModule(BaseModule):
     @on_view_update(interval=1 / 10)
     def display_frame(self, providers: Providers) -> None:
         if self.frame is not None:
-            providers.rerun.log("camera/image/rgb", rr.Image(self.frame, draw_order=99))
+            providers.rerun.log("camera/image/rgb", rr.Image(self.frame).compress(jpeg_quality=50))
         else:
             self.logger.warning("No frame to display.")
 

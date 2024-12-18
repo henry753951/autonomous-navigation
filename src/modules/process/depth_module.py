@@ -39,7 +39,7 @@ class DepthModule(BaseModule):
     def rare_update(self) -> None:
         pass
 
-    @on_view_update(interval=1 / 10)
+    @on_view_update(interval=1 / 1)
     def display_frame(self, providers: Providers) -> None:
         if self.pred_depth is not None:
             depth_image = self.pred_depth.squeeze().cpu().numpy()
