@@ -1,25 +1,7 @@
 # Create Module
+/modules
 
-
-# Register Component
-確定 Module 有放入 `modules` 資料夾的分類中  
-若有要傳遞參數，可用 `__init__` 傳入參數  
-```py
-from src.modules.collect.camera_module import CameraModule
-...
-app: App = App(
-    modules=[
-        CameraModule(some_args),
-
-        # 重複的Module
-        CameraModule(some_args), # Same Class Module ❌❌❌
-        CameraModule(some_args).set_key('camera_1'), # Same Class Module ✔️✔️✔️
-    ],
-)
-```
-- 如果有同Class的Module，可以使用 .set_key() 來設定Key，沒有設定Key的話，會是 "default"
-
-# Module Lifecycle hooks
+## Module Lifecycle hooks
 按照觸發順序列出
 1. __init__(self) -> None
 Class 初始化的時候 ``App(modules=[ ... ]) 時就會觸發``  
@@ -40,11 +22,29 @@ App 初始化完畢後，會觸發所有 Module 的 __mount__ (按照 modules �
 4. __unmount__(self) -> None
 - - 模組被卸載時，可以清理資源
 
-# 週期性執行
+## 週期性執行
 只會在__mount__後才會開始執行
 TickRate 不同，App.max_tick 可調整
 - update(self):
 - rare_update(self):
+
+# Register Module
+確定 Module 有放入 `modules` 資料夾的分類中  
+若有要傳遞參數，可用 `__init__` 傳入參數  
+```py
+from src.modules.collect.camera_module import CameraModule
+...
+app: App = App(
+    modules=[
+        CameraModule(some_args),
+
+        # 重複的Module
+        CameraModule(some_args), # Same Class Module ❌❌❌
+        CameraModule(some_args).set_key('camera_1'), # Same Class Module ✔️✔️✔️
+    ],
+)
+```
+- 如果有同Class的Module，可以使用 .set_key() 來設定Key，沒有設定Key的話，會是 "default"
 
 
 # 調用其他 Module 互相溝通
