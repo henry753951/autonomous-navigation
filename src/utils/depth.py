@@ -49,3 +49,52 @@ def normalize_image(
         std = std.cuda()
     rgb = (rgb - mean) / std
     return rgb.unsqueeze(0).to(device)
+
+
+def generate_point_cloud(
+    depth_image: np.ndarray,
+    rgb_image: np.ndarray,
+    intrinsic: list[float],
+) -> np.ndarray:
+    """Generate 3D point cloud from depth image and intrinsic matrix."""
+    h, w = depth_image.shape
+    f_x, f_y, c_x, c_y = intrinsic
+
+    # Generate a grid of (u, v) coordinates
+    u, v = np.meshgrid(np.arange(w), np.arange(h))
+
+    # Compute 3D points
+    x = (u - c_x) * depth_image / f_x
+    y = (v - c_y) * depth_image / f_y
+    z = depth_image
+
+    points_3d = np.stack((x, y, z), axis=-1).reshape(-1, 3)
+    colors = rgb_image.reshape(-1, 3) / 255.0  # Normalize to [0, 1]
+
+    # Stack into a single array of shape (N, 3)
+    return points_3d, colors
+
+
+def calculate_intrinsic_matrix(
+    width: int,
+    height: int,
+    hfov: float,
+) -> np.ndarray:
+    """Calculate intrinsic matrix from width, height, and horizontal field of view."""
+    f_x = width / (2 * np.tan(np.radians(hfov / 2)))
+    vfov = 2 * np.arctan((height / width) * np.tan(np.radians(hfov / 2)))
+    f_y = height / (2 * np.tan(vfov / 2))
+    c_x = width / 2
+    c_y = height / 2
+    """
+    # 組裝內參矩陣
+        return np.array(
+            [
+                [f_x, 0, c_x],
+                [0, f_y, c_y],
+                [0, 0, 1],
+            ],
+        )
+
+    """
+    return [f_x, f_y, c_x, c_y]
