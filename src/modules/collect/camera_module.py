@@ -14,8 +14,6 @@ class CameraModule(BaseModule):
         self._video_path: str = "data/test_videos/1.mp4"
         self._capture: cv2.VideoCapture | None = None
         self.frame: cv2.Mat | None = None
-        self._last_time: float = 0.0
-        self._fps: float = 0.0
 
     def __mount__(self) -> None:
         self._capture = cv2.VideoCapture(self._video_path)
@@ -25,7 +23,6 @@ class CameraModule(BaseModule):
             self._capture = None
         else:
             self.logger.debug(f"Video opened: {self._video_path}")
-        self._last_time = time.time()
 
     def __sysready__(self) -> None:
         pass
@@ -50,31 +47,10 @@ class CameraModule(BaseModule):
             self.logger.warning("No more frames to read or an error occurred.")
             return
 
-        # Calculate FPS
-        current_time: float = time.time()
-        elapsed_time: float = current_time - self._last_time
-        self._last_time = current_time
-        if elapsed_time > 0:
-            self._fps = 1.0 / elapsed_time
-
-        # Overlay FPS on the frame
-        cv2.putText(
-            self.frame,
-            f"FPS: {self._fps:.2f}",
-            (10, 30),  # Position
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1.0,  # Font size
-            (0, 255, 0),  # Font color
-            2,  # Thickness
-        )
-
     @on_view_update(interval=1 / 10)
     def display_frame(self, providers: Providers) -> None:
         if self.frame is not None:
+            providers.rerun.set_time_seconds("time", time.time())
             providers.rerun.log("camera/image/rgb", rr.Image(self.frame).compress(jpeg_quality=50))
         else:
             self.logger.warning("No frame to display.")
-
-    @on_view_update(interval=1 / 5)
-    def display_fps(self, providers: Providers) -> None:
-        providers.rerun.log("camera/1/fps", rr.TextLog(self._fps), timeless=True)

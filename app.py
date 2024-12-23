@@ -1,6 +1,8 @@
 import threading
 import time
 
+import rerun as rr
+
 from src.module_controller import ModuleController
 from src.modules.base_module import BaseModule
 from src.modules.collect.camera_module import CameraModule
@@ -30,7 +32,9 @@ class App:
             start_time: float = time.time()
             self.controller.update()
             elapsed: float = time.time() - start_time
-            time.sleep(max(0, 1 / self.max_tick["update"] - elapsed))
+            if elapsed > 0:
+                frequency: float = 1 / elapsed
+                rr.log("data/update_freq", rr.TextLog(frequency), static=True)
 
     def rare_update_loop(self) -> None:
         """執行 rare_update 的迴圈"""
@@ -38,6 +42,9 @@ class App:
             start_time: float = time.time()
             self.controller.rare_update()
             elapsed: float = time.time() - start_time
+            if elapsed > 0:
+                frequency: float = 1 / elapsed
+                rr.log("data/rare_update_freq", rr.TextLog(frequency), static=True)
             time.sleep(max(0, 1 / self.max_tick["rare_update"] - elapsed))
 
     def stop(self) -> None:
