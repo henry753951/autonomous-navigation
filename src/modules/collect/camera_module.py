@@ -42,7 +42,8 @@ class CameraModule(BaseModule):
             return
 
         ret: bool
-        ret, self.frame = self._capture.read()
+        ret, frame = self._capture.read()
+        self.frame = cv2.resize(frame, (1920, 1080))
         if not ret or self.frame is None:
             self.logger.warning("No more frames to read or an error occurred.")
             return
