@@ -50,7 +50,7 @@ class DepthModule(BaseModule):
 
             # Resize the depth image to the original size
             depth_image = cv2.resize(depth_image, (w, h), interpolation=cv2.INTER_LINEAR)
-            hfov = 90
+            hfov = 65.0
             intrinsic = depth_utils.calculate_intrinsic_matrix(w, h, hfov)
             points_3d, colors = depth_utils.generate_point_cloud(depth_image, self.camera_module.frame, intrinsic)
 
