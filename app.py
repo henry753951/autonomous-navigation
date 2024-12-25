@@ -5,8 +5,6 @@ import rerun as rr
 
 from src.module_controller import ModuleController
 from src.modules.base_module import BaseModule
-from src.modules.collect.camera_module import CameraModule
-from src.modules.process.depth_module import DepthModule
 from src.utils.logger import setup_logger
 from src.view_controller import ViewController
 
@@ -28,24 +26,42 @@ class App:
 
     def update_loop(self) -> None:
         """執行 update 的迴圈"""
+        target_interval = 1 / self.max_tick["update"]
+        next_tick = time.time()
+
         while self.running.is_set():
-            start_time: float = time.time()
+            start_time = time.time()
+            # 更新所有模組
             self.controller.update()
-            elapsed: float = time.time() - start_time
+
+            elapsed = time.time() - start_time
             if elapsed > 0:
-                frequency: float = 1 / elapsed
+                frequency = min(self.max_tick["update"], 1 / elapsed)
                 rr.log("data/update_freq", rr.TextLog(frequency), static=True)
+            next_tick += target_interval
+            if next_tick < time.time():
+                next_tick = time.time() + target_interval
+            sleep_time = max(0, next_tick - time.time())
+            time.sleep(sleep_time)
 
     def rare_update_loop(self) -> None:
         """執行 rare_update 的迴圈"""
+        target_interval = 1 / self.max_tick["rare_update"]
+        next_tick = time.time()
         while self.running.is_set():
-            start_time: float = time.time()
+            start_time = time.time()
+            # 更新所有模組
             self.controller.rare_update()
-            elapsed: float = time.time() - start_time
+
+            elapsed = time.time() - start_time
             if elapsed > 0:
-                frequency: float = 1 / elapsed
+                frequency = min(self.max_tick["rare_update"], 1 / elapsed)
                 rr.log("data/rare_update_freq", rr.TextLog(frequency), static=True)
-            time.sleep(max(0, 1 / self.max_tick["rare_update"] - elapsed))
+            next_tick += target_interval
+            if next_tick < time.time():
+                next_tick = time.time() + target_interval
+            sleep_time = max(0, next_tick - time.time())
+            time.sleep(sleep_time)
 
     def stop(self) -> None:
         """停止執行"""
@@ -91,6 +107,9 @@ class App:
 
 
 if __name__ == "__main__":
+    from src.modules.collect.camera_module import CameraModule
+    from src.modules.process.depth_module import DepthModule
+
     app: App = App(
         modules=[
             # 模組的初始化參數可以在這裡設定
