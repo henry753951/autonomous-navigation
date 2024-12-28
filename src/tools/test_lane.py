@@ -9,8 +9,9 @@ from mmcv.parallel import MMDataParallel
 from torch.backends import cudnn
 
 from src.models.lane.registry import build_net
-from src.utils.config import Config
-from src.utils.net_utils import load_network
+from src.utils.lane.config import Config
+from src.utils.lane.lane import imshow_lanes
+from src.utils.lane.net_utils import load_network
 
 
 class Runner:
@@ -24,7 +25,7 @@ class Runner:
         np.random.seed(cfg.seed)
         random.seed(cfg.seed)
         self.cfg = cfg
-
+        print("Configuration:", cfg)
         # Initialize and load network
         self.net: MMDataParallel = build_net(self.cfg)
         self.net = MMDataParallel(self.net, device_ids=range(self.cfg.gpus)).cuda()
@@ -78,13 +79,13 @@ def read_and_infer(runner: Runner, image_path: str) -> Any:
 
     # Perform inference
     output = runner.inference(image_tensor)
-    return output
+    return output, image_resized
 
 
 def main() -> None:
     # 固定參數設定
     config_path = "configs/DLA_CULane.py"  # 訓練配置檔案路徑
-    load_from_path = "data/models/dla34_8087.pth"  # 預訓練權重檔案路徑
+    load_from_path = "data/models/DLA34_CULane.pth"  # 預訓練權重檔案路徑
     gpus = [0]  # 使用的 GPU 編號
     seed = 0  # 隨機種子
     distillation = False  # 是否使用蒸餾技術
@@ -109,6 +110,9 @@ def main() -> None:
     # 設定工作目錄
     cfg.work_dirs = None  # 可選，若需要特定工作目錄，則在此設定
 
+    cfg.input_width = 800  # 輸入影像寬度
+    cfg.input_height = 320  # 輸入影像高度
+
     # 啟用 cuDNN 的優化選項
     cudnn.benchmark = True
 
@@ -116,9 +120,9 @@ def main() -> None:
     runner = Runner(cfg)
 
     # 直接進行推理測試
-    test_image_path = "path/to/your/test/image.jpg"  # 測試圖片路徑
-    output = read_and_infer(runner, test_image_path)
-    print("Inference Output:", output)
+    test_image_path = "data/test_images/fuck.png"
+    output, image_resized = read_and_infer(runner, test_image_path)
+    imshow_lanes(image_resized, lanes=output[0])
 
 
 if __name__ == "__main__":

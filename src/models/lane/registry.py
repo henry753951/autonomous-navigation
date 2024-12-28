@@ -1,6 +1,6 @@
 from torch import nn
 
-from src.utils import Registry, build_from_cfg
+from src.utils.lane import Registry, build_from_cfg
 
 BACKBONES = Registry("backbones")
 HEADS = Registry("heads")

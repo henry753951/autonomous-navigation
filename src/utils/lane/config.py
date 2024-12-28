@@ -1,5 +1,6 @@
 # Copyright (c) Open-MMLab. All rights reserved.
 import ast
+import os
 import os.path as osp
 import shutil
 import sys
@@ -16,6 +17,13 @@ DELETE_KEY = "_delete_"
 RESERVED_KEYS = ["filename", "text", "pretty_text"]
 
 
+def custom_temp_directory():
+    temp_dir = "temp"
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)  # 創建 .temp 目錄
+    return temp_dir
+
+
 def check_file_exist(filename, msg_tmpl='file "{}" does not exist'):
     if not osp.isfile(filename):
         raise FileNotFoundError(msg_tmpl.format(filename))
@@ -29,7 +37,7 @@ class ConfigDict(Dict):
         try:
             value = super(ConfigDict, self).__getattr__(name)
         except KeyError:
-            ex = AttributeError(f"'{self.__class__.__name__}' object has no " f"attribute '{name}'")
+            ex = AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
         except Exception as e:
             ex = e
         else:
@@ -93,20 +101,18 @@ class Config:
         filename = osp.abspath(osp.expanduser(filename))
         check_file_exist(filename)
         if filename.endswith(".py"):
-            with tempfile.TemporaryDirectory() as temp_config_dir:
-                temp_config_file = tempfile.NamedTemporaryFile(dir=temp_config_dir, suffix=".py")
-                temp_config_name = osp.basename(temp_config_file.name)
-                shutil.copyfile(filename, osp.join(temp_config_dir, temp_config_name))
+            with tempfile.TemporaryDirectory(dir=custom_temp_directory()) as temp_config_dir:
+                temp_config_name = osp.basename(filename)
+                dst = osp.join(temp_config_dir, temp_config_name)
+                print(f"Copying from {filename} to {dst}")
+                shutil.copyfile(filename, dst)  # 直接複製來源文件
                 temp_module_name = osp.splitext(temp_config_name)[0]
                 sys.path.insert(0, temp_config_dir)
                 Config._validate_py_syntax(filename)
                 mod = import_module(temp_module_name)
                 sys.path.pop(0)
                 cfg_dict = {name: value for name, value in mod.__dict__.items() if not name.startswith("__")}
-                # delete imported module
                 del sys.modules[temp_module_name]
-                # close temp file
-                temp_config_file.close()
         elif filename.endswith((".yml", ".yaml", ".json")):
             import mmcv
 
@@ -158,7 +164,7 @@ class Config:
                         f"{k}={v} in child config cannot inherit from base "
                         f"because {k} is a dict in the child config but is of "
                         f"type {type(b[k])} in base config. You may set "
-                        f"`{DELETE_KEY}=True` to ignore the base config"
+                        f"`{DELETE_KEY}=True` to ignore the base config",
                     )
                 b[k] = Config._merge_a_into_b(v, b[k])
             else:
@@ -293,7 +299,9 @@ class Config:
         text = _format_dict(cfg_dict, outest_level=True)
         # copied from setup.cfg
         yapf_style = dict(
-            based_on_style="pep8", blank_line_before_nested_class_or_def=True, split_before_expression_after_opening_paren=True
+            based_on_style="pep8",
+            blank_line_before_nested_class_or_def=True,
+            split_before_expression_after_opening_paren=True,
         )
         text, _ = FormatCode(text, style_config=yapf_style, verify=True)
 

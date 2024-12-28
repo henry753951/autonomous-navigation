@@ -1,6 +1,5 @@
 import logging
 import math
-from os.path import join
 
 import torch
 import torch.nn.functional as F
@@ -21,7 +20,7 @@ def calculate_attention_map(x):
 
 
 def get_model_url(data="imagenet", name="dla34", hash="ba72cf86"):
-    return join("http://dl.yf.io/dla/models", data, f"{name}-{hash}.pth")
+    return "http://dl.yf.io/dla/models/" + data + f"/{name}-{hash}.pth"
 
 
 def conv3x3(in_planes, out_planes, stride=1):

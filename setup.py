@@ -3,8 +3,7 @@ import re
 import traceback
 
 from setuptools import find_namespace_packages, setup
-from setuptools.command.build_ext import build_ext
-from torch.utils.cpp_extension import CUDAExtension
+from torch.utils.cpp_extension import BuildExtension, CUDAExtension, include_paths
 
 
 def parse_requirements(fname="requirements.txt", with_version=True):
@@ -94,9 +93,10 @@ def get_extensions():
         name=ext_name,
         sources=op_files,
         extra_compile_args={
-            "cxx": [],  # 可選的 C++ 編譯參數
-            "nvcc": ["-O2"],  # CUDA 編譯參數
+            "cxx": ["/std:c++17"],
+            "nvcc": ["-O2", "-std=c++17"],
         },
+        include_dirs=include_paths(),
     )
 
     extensions.append(ext_ops)
@@ -104,7 +104,7 @@ def get_extensions():
     return extensions
 
 
-class CustomBuildExt(build_ext):
+class CustomBuildExt(BuildExtension):
     def run(self):
         try:
             super().run()
@@ -115,7 +115,7 @@ class CustomBuildExt(build_ext):
 
 
 setup(
-    name="clrkd",
+    name="src",
     version="1.0",
     packages=find_namespace_packages(include=["src.*"]),
     include_package_data=True,

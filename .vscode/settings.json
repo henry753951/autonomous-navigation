@@ -21,5 +21,11 @@
         "plaintext": true,
         "markdown": true,
         "scminput": false
+    },
+    "files.associations": {
+        "*.page-template": "vue",
+        "*.layout-template": "vue",
+        "*.vue": "vue",
+        "iostream": "cpp"
     }
 }
