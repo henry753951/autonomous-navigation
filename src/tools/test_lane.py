@@ -1,129 +1,174 @@
-import os
-import random
-from typing import Any
+import logging
+import sys
 
 import cv2
 import numpy as np
+import scipy.special
 import torch
-from mmcv.parallel import MMDataParallel
-from torch.backends import cudnn
+from torchvision import transforms
 
-from src.models.lane.registry import build_net
-from src.utils.lane.config import Config
-from src.utils.lane.lane import imshow_lanes
-from src.utils.lane.net_utils import load_network
-
-
-class Runner:
-    def __init__(self, cfg: Any):
-        """
-        Initialize the Runner with a configuration object.
-
-        :param cfg: Configuration object containing model and runtime settings.
-        """
-        torch.manual_seed(cfg.seed)
-        np.random.seed(cfg.seed)
-        random.seed(cfg.seed)
-        self.cfg = cfg
-        print("Configuration:", cfg)
-        # Initialize and load network
-        self.net: MMDataParallel = build_net(self.cfg)
-        self.net = MMDataParallel(self.net, device_ids=range(self.cfg.gpus)).cuda()
-        load_network(self.net, self.cfg.load_from)
-        self.net.eval()  # Set to evaluation mode
-
-    def to_cuda(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        """
-        Move a batch of data to CUDA.
-
-        :param batch: Dictionary containing input data.
-        :return: Dictionary with all tensor values moved to CUDA.
-        """
-        for k in batch:
-            if not isinstance(batch[k], torch.Tensor):
-                continue
-            batch[k] = batch[k].cuda()
-        return batch
-
-    def inference(self, image: torch.Tensor) -> Any:
-        """
-        Perform inference on a single image.
-
-        :param image: A preprocessed tensor image ready for the network.
-                      Shape: [batch_size, channels, height, width].
-        :return: Inference output from the model, which is model-specific.
-        """
-        with torch.no_grad():
-            output = self.net(image)
-            output = self.net.module.heads.get_lanes(output)
-        return output
-
-
-def read_and_infer(runner: Runner, image_path: str) -> Any:
-    """
-    Read an image from a file path, preprocess it, and perform inference.
-
-    :param runner: An instance of the Runner class.
-    :param image_path: Path to the input image.
-    :return: Inference output from the model, which is model-specific.
-    """
-    # Read and preprocess the image
-    image = cv2.imread(image_path)
-    if image is None:
-        raise FileNotFoundError(f"Image not found at {image_path}")
-
-    # Resize or preprocess the image as needed by your model
-    input_size = (runner.cfg.input_width, runner.cfg.input_height)
-    image_resized = cv2.resize(image, input_size)
-    image_tensor = torch.from_numpy(image_resized).permute(2, 0, 1).float().unsqueeze(0).cuda() / 255.0
-
-    # Perform inference
-    output = runner.inference(image_tensor)
-    return output, image_resized
-
-
-def main() -> None:
-    # 固定參數設定
-    config_path = "configs/DLA_CULane.py"  # 訓練配置檔案路徑
-    load_from_path = "data/models/DLA34_CULane.pth"  # 預訓練權重檔案路徑
-    gpus = [0]  # 使用的 GPU 編號
-    seed = 0  # 隨機種子
-    distillation = False  # 是否使用蒸餾技術
-
-    # 設定 CUDA
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(gpu) for gpu in gpus)
-
-    # 讀取配置
-    cfg = Config.fromfile(config_path)
-    cfg.gpus = len(gpus)
-
-    # 設定參數
-    cfg.load_from = load_from_path
-    cfg.resume_from = None  # 如果需要從特定檢查點恢復，可在此設定
-    cfg.finetune_from = None  # 如果需要微調，可在此設定
-    cfg.view = False  # 是否啟用視覺化
-    cfg.seed = seed
-    cfg.distillation = distillation
-    cfg.teacher_model_cfg = None  # 如果使用蒸餾，可在此設定
-    cfg.teacher_model_path = None  # 如果使用蒸餾，需指定教師模型檔案路徑
-
-    # 設定工作目錄
-    cfg.work_dirs = None  # 可選，若需要特定工作目錄，則在此設定
-
-    cfg.input_width = 800  # 輸入影像寬度
-    cfg.input_height = 320  # 輸入影像高度
-
-    # 啟用 cuDNN 的優化選項
-    cudnn.benchmark = True
-
-    # 初始化 Runner 並執行推理測試
-    runner = Runner(cfg)
-
-    # 直接進行推理測試
-    test_image_path = "data/test_images/fuck.png"
-    output, image_resized = read_and_infer(runner, test_image_path)
-    imshow_lanes(image_resized, lanes=output[0])
-
+from src.models.lane.model import ParsingNet
 
 if __name__ == "__main__":
-    main()
+    torch.backends.cudnn.benchmark = True
+
+    # 固定配置參數
+    cfg = {
+        "backbone": "18",  # ResNet backbone
+        "griding_num": 100,  # Griding number
+        "num_lanes": 4,  # Number of lanes
+        "test_model": "./data/models/tusimple_18.pth",
+    }
+
+    # 驗證配置參數
+    assert cfg["backbone"] in ["18", "34", "50", "101", "152", "50next", "101next", "50wide", "101wide"]
+
+    row_anchor = [
+        64,
+        68,
+        72,
+        76,
+        80,
+        84,
+        88,
+        92,
+        96,
+        100,
+        104,
+        108,
+        112,
+        116,
+        120,
+        124,
+        128,
+        132,
+        136,
+        140,
+        144,
+        148,
+        152,
+        156,
+        160,
+        164,
+        168,
+        172,
+        176,
+        180,
+        184,
+        188,
+        192,
+        196,
+        200,
+        204,
+        208,
+        212,
+        216,
+        220,
+        224,
+        228,
+        232,
+        236,
+        240,
+        244,
+        248,
+        252,
+        256,
+        260,
+        264,
+        268,
+        272,
+        276,
+        280,
+        284,
+    ]
+    cls_num_per_lane = 56
+    img_w, img_h = 1280, 720
+
+    # 加載模型
+    net = ParsingNet(
+        pretrained=False,
+        backbone=cfg["backbone"],
+        cls_dim=(cfg["griding_num"] + 1, cls_num_per_lane, cfg["num_lanes"]),
+        use_aux=False,
+    ).cuda()
+
+    state_dict = torch.load(cfg["test_model"], map_location="cpu")["model"]
+    compatible_state_dict = {}
+    for k, v in state_dict.items():
+        if "module." in k:
+            compatible_state_dict[k[7:]] = v
+        else:
+            compatible_state_dict[k] = v
+
+    net.load_state_dict(compatible_state_dict, strict=False)
+    net.eval()
+
+    # 圖像變換
+    img_transforms = transforms.Compose(
+        [
+            transforms.ToTensor(),  # 轉換 numpy.ndarray 為 torch.Tensor
+            transforms.Resize((288, 800)),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ],
+    )
+
+    # 讀取單張圖像
+    image_path = "./data/test_images/1cMwXM1_81ya_G3O8xAi_Wg.jpg"
+    vis = cv2.imread(image_path)
+    if vis is None:
+        logging.error(f"Error: Could not read image {image_path}.")
+        sys.exit()
+    vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
+    height, width, _ = vis.shape
+
+    # 內縮比例，例如 80% 的寬度和高度
+    scale = 0.7
+    new_width = int(width * scale)
+    new_height = int(height * scale)
+
+    # 計算中上裁切區域
+    x_start = (width - new_width) // 2
+    y_start = 0  # 靠中上，因此從頂部開始裁切
+    x_end = x_start + new_width
+    y_end = y_start + new_height
+
+    # 裁切圖像
+    vis = vis[y_start:y_end, x_start:x_end]
+    vis = cv2.resize(vis, (1280, 720))
+    resized_frame = cv2.resize(vis, (800, 288))
+    img = img_transforms(resized_frame).unsqueeze(0).cuda()
+
+    with torch.no_grad():
+        out = net(img)
+
+    col_sample = np.linspace(0, 800 - 1, cfg["griding_num"])
+    col_sample_w = col_sample[1] - col_sample[0]
+
+    out_j = out[0].data.cpu().numpy()
+    out_j = out_j[:, ::-1, :]
+    prob = scipy.special.softmax(out_j[:-1, :, :], axis=0)
+    idx = np.arange(cfg["griding_num"]) + 1
+    idx = idx.reshape(-1, 1, 1)
+    loc = np.sum(prob * idx, axis=0)
+    out_j = np.argmax(out_j, axis=0)
+    loc[out_j == cfg["griding_num"]] = 0
+    out_j = loc
+
+    print(out_j)
+
+    # 在圖像上繪製檢測結果
+    for i in range(out_j.shape[1]):
+        if np.sum(out_j[:, i] != 0) > 2:
+            for k in range(out_j.shape[0]):
+                if out_j[k, i] > 0:
+                    ppp = (
+                        int(out_j[k, i] * col_sample_w * img_w / 800) - 1,
+                        int(img_h * (row_anchor[cls_num_per_lane - 1 - k] / 288)) - 1,
+                    )
+                    cv2.circle(vis, ppp, 5, (0, 255, 0), -1)
+
+    # 顯示並保存結果
+    cv2.imshow("Lane Detection", vis)
+    cv2.imwrite("result.png", vis)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
