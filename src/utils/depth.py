@@ -51,50 +51,70 @@ def normalize_image(
     return rgb.unsqueeze(0).to(device)
 
 
+def preprocess_depth(depth_image: np.ndarray) -> np.ndarray:
+    # 使用 5x5 的中值濾波
+    return cv2.medianBlur(depth_image, 5)
+
+
+def preprocess_depth_bilateral(depth_image: np.ndarray) -> np.ndarray:
+    # 參數可根據需求調整
+    return cv2.bilateralFilter(depth_image, d=9, sigmaColor=75, sigmaSpace=75)
+
+
 def generate_point_cloud(
     depth_image: np.ndarray,
     rgb_image: np.ndarray,
     intrinsic: list[float],
 ) -> np.ndarray:
     """Generate 3D point cloud from depth image and intrinsic matrix."""
+    # 預處理深度圖像
+    depth_image = preprocess_depth(depth_image)
+
     h, w = depth_image.shape
     f_x, f_y, c_x, c_y = intrinsic
 
-    # Generate a grid of (u, v) coordinates
+    # 生成 (u, v) 網格坐標
     u, v = np.meshgrid(np.arange(w), np.arange(h))
 
-    # Compute 3D points
+    # 計算 3D 點
     x = (u - c_x) * depth_image / f_x
     y = (v - c_y) * depth_image / f_y
     z = depth_image
 
     points_3d = np.stack((x, y, z), axis=-1).reshape(-1, 3)
-    colors = rgb_image.reshape(-1, 3) / 255.0  # Normalize to [0, 1]
+    colors = rgb_image.reshape(-1, 3) / 255.0  # 正規化到 [0, 1]
 
-    # Stack into a single array of shape (N, 3)
     return points_3d, colors
 
 
-def calculate_intrinsic_matrix(
-    width: int,
-    height: int,
-    hfov: float,
-) -> np.ndarray:
-    """Calculate intrinsic matrix from width, height, and horizontal field of view."""
+def calculate_intrinsic_matrix(width: int, height: int, hfov: float) -> tuple[np.ndarray, float]:
+    """
+    Calculate intrinsic matrix and focal length from width, height, and horizontal field of view.
+
+    Parameters:
+    - width: int, image width in pixels
+    - height: int, image height in pixels
+    - hfov: float, horizontal field of view in degrees
+
+    Returns:
+    - intrinsic: np.ndarray, 3x3 intrinsic matrix
+    - focal_length: float, focal length (average of f_x and f_y)
+    """
+    # Calculate f_x and f_y
     f_x = width / (2 * np.tan(np.radians(hfov / 2)))
     vfov = 2 * np.arctan((height / width) * np.tan(np.radians(hfov / 2)))
     f_y = height / (2 * np.tan(vfov / 2))
+
+    # Calculate optical center
     c_x = width / 2
     c_y = height / 2
-    """
-    # 組裝內參矩陣
-        return np.array(
-            [
-                [f_x, 0, c_x],
-                [0, f_y, c_y],
-                [0, 0, 1],
-            ],
-        )
 
-    """
-    return [f_x, f_y, c_x, c_y]
+    # Construct the intrinsic matrix
+    intrinsic = np.array(
+        [f_x, f_y, c_x, c_y],
+    )
+
+    # Compute the average focal length
+    focal_length = (f_x + f_y) / 2
+
+    return intrinsic, focal_length

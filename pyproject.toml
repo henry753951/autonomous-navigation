@@ -10,10 +10,13 @@ dependencies = [
     "pydantic",
     "colorama",
     "rerun-sdk==0.20.3",
-    "mmcv>=1.7.2",
     "torch>=2.5.1",
     "timm>=1.0.12",
     "xformers>=0.0.28.post3",
+    "mmcv==1.7.2",
+    "wheel>=0.45.1",
+    "pygetwindow>=0.0.9",
+    "mss>=10.0.0",
 ]
 
 

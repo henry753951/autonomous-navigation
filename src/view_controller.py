@@ -13,7 +13,7 @@ class Providers:
     def __init__(self) -> None:
         self.rerun = rr
         rr.init("view_controller")
-        rr.spawn(memory_limit="1500MB", port=8543)
+        rr.spawn(memory_limit="1500MB", port=8437)
 
 
 class ViewController:

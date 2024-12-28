@@ -51,19 +51,18 @@ class DepthModule(BaseModule):
             # Resize the depth image to the original size
             depth_image = cv2.resize(depth_image, (w, h), interpolation=cv2.INTER_LINEAR)
             hfov = 65.0
-            intrinsic = depth_utils.calculate_intrinsic_matrix(w, h, hfov)
+            intrinsic, focal_length = depth_utils.calculate_intrinsic_matrix(w, h, hfov)
             points_3d, colors = depth_utils.generate_point_cloud(depth_image, self.camera_module.frame, intrinsic)
-
             providers.rerun.set_time_seconds("time", time.time())
             providers.rerun.log(
                 "camera/image",
                 rr.Pinhole(
                     width=depth_image.shape[1],
                     height=depth_image.shape[0],
-                    focal_length=0.5 * depth_image.shape[1],
+                    focal_length=int(focal_length),
                     image_plane_distance=40.0,
                 ),
             )
 
-            providers.rerun.log("camera/image/depth", rr.DepthImage(depth_image))
-            providers.rerun.log("world/points", rr.Points3D(points_3d, colors=colors, radii=0.05))
+            providers.rerun.log("camera/image/depth", rr.DepthImage(depth_image, colormap="CyanToYellow"))
+            providers.rerun.log("world/points", rr.Points3D(points_3d, colors=colors, radii=0.085))
